@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Research Radar</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #e4e4e0;
+    --accent: #2f5bd3; --accent-soft: #e8eefc; --good: #1f8a4c; --warn: #b26b00; --bar: #2f5bd3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121214; --panel: #1b1b1f; --ink: #ececef; --muted: #9a9aa3; --line: #2c2c33;
+      --accent: #7c9cff; --accent-soft: #23294a; --good: #4cc27f; --warn: #e0a040; --bar: #7c9cff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+  header { padding: 20px 16px 12px; max-width: 1100px; margin: auto; display: flex; gap: 16px;
+           align-items: baseline; flex-wrap: wrap; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
+  #stats { color: var(--muted); font-size: 13px; }
+  nav { margin-left: auto; display: flex; gap: 4px; }
+  nav button { background: none; border: 1px solid var(--line); color: var(--ink); padding: 6px 12px;
+               border-radius: 8px; cursor: pointer; font: inherit; }
+  nav button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  main { max-width: 1100px; margin: auto; padding: 0 16px 40px; }
+  .row { display: flex; gap: 8px; margin-bottom: 16px; }
+  input[type=text], input[type=number] { flex: 1; min-width: 0; padding: 11px 14px; font: inherit;
+         border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); }
+  input[type=number] { flex: 0 0 90px; }
+  .go { padding: 0 18px; border: 0; border-radius: 10px; background: var(--accent); color: #fff;
+        font: inherit; font-weight: 600; cursor: pointer; }
+  .go:disabled { opacity: .5; cursor: default; }
+  .grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .card h3 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+             color: var(--muted); }
+  .step { border-left: 2px solid var(--accent); padding: 2px 0 10px 10px; font-size: 13px; }
+  .step b { color: var(--accent); }
+  .step .ms { color: var(--muted); float: right; }
+  .step div { color: var(--muted); overflow-wrap: anywhere; }
+  #answer { white-space: pre-wrap; min-height: 60px; }
+  .cite { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 5px;
+          padding: 0 5px; font-size: 12px; font-weight: 600; text-decoration: none; }
+  .src { padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .src a { color: var(--ink); font-weight: 600; text-decoration: none; }
+  .src .meta { color: var(--muted); }
+  .src.uncited { opacity: .55; }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 99px;
+           border: 1px solid var(--line); color: var(--muted); margin-left: 4px; }
+  .verdict { margin-top: 12px; font-size: 13px; padding: 8px 10px; border-radius: 8px; }
+  .verdict.ok { color: var(--good); border: 1px solid var(--good); }
+  .verdict.warn { color: var(--warn); border: 1px solid var(--warn); }
+  .examples { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 16px; }
+  .examples button { font: inherit; font-size: 13px; background: var(--panel); color: var(--muted);
+                     border: 1px solid var(--line); border-radius: 99px; padding: 4px 10px; cursor: pointer; }
+  .bars { display: flex; align-items: flex-end; gap: 6px; height: 140px; padding-top: 10px; }
+  .bars div { flex: 1; background: var(--bar); border-radius: 4px 4px 0 0; position: relative; min-height: 2px; }
+  .bars span { position: absolute; top: -18px; width: 100%; text-align: center; font-size: 11px; color: var(--muted); }
+  .bar-labels { display: flex; gap: 6px; font-size: 10px; color: var(--muted); }
+  .bar-labels div { flex: 1; text-align: center; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td, th { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { color: var(--muted); font-weight: 500; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tri { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; }
+  @media (max-width: 760px) { .tri { grid-template-columns: 1fr; } }
+  .hidden { display: none; }
+  .muted { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📡 Research Radar</h1>
+  <span id="stats">loading…</span>
+  <nav><button id="tab-ask" class="on">Ask</button><button id="tab-trends">Trends</button></nav>
+</header>
+<main>
+  <section id="view-ask">
+    <form class="row" id="ask-form">
+      <input type="text" id="q" placeholder="Ask about recent AI research…" autocomplete="off">
+      <button class="go" id="ask-btn">Ask</button>
+    </form>
+    <div class="examples" id="examples"></div>
+    <div class="grid">
+      <div class="card"><h3>Agent trace</h3><div id="steps" class="muted">Steps appear here live.</div></div>
+      <div class="card"><h3>Answer</h3><div id="answer" class="muted">—</div><div id="verdict"></div><div id="sources"></div></div>
+    </div>
+  </section>
+
+  <section id="view-trends" class="hidden">
+    <form class="row" id="trend-form">
+      <input type="text" id="topic" placeholder="Optional topic, e.g. graph RAG, agent memory…">
+      <input type="number" id="weeks" value="8" min="2" max="52" title="weeks">
+      <button class="go">Analyse</button>
+    </form>
+    <div class="card"><h3>Papers per week</h3><div class="bars" id="bars"></div><div class="bar-labels" id="bar-labels"></div></div>
+    <div class="tri">
+      <div class="card"><h3>Rising</h3><table id="t-rising"></table></div>
+      <div class="card"><h3>Fading</h3><table id="t-fading"></table></div>
+      <div class="card"><h3>Most common</h3><table id="t-popular"></table></div>
+    </div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const EXAMPLES = [
+  "What are the newest techniques to reduce hallucination in RAG?",
+  "How are recent papers evaluating RAG systems?",
+  "What's trending in RAG research lately?",
+  "Which papers combine knowledge graphs with retrieval?",
+];
+$("examples").innerHTML = EXAMPLES.map((e) => `<button type="button">${esc(e)}</button>`).join("");
+$("examples").onclick = (e) => { if (e.target.tagName === "BUTTON") { $("q").value = e.target.textContent; ask(); } };
+
+function tab(name) {
+  for (const t of ["ask", "trends"]) {
+    $("view-" + t).classList.toggle("hidden", t !== name);
+    $("tab-" + t).classList.toggle("on", t === name);
+  }
+}
+$("tab-ask").onclick = () => tab("ask");
+$("tab-trends").onclick = () => { tab("trends"); if (!$("bars").children.length) trends(); };
+
+fetch("/api/stats").then((r) => r.json()).then((s) => {
+  $("stats").textContent = `${s.papers} papers · ${s.papers_with_fulltext} full-text · ${s.chunks} chunks · newest ${String(s.newest).slice(0, 10)}`;
+});
+
+function stepSummary(name, d) {
+  if (name === "plan") return `route: ${d.route}` + (d.search_queries?.length ? ` · queries: ${d.search_queries.join(" | ")}` : "");
+  if (name === "retrieve") return `round ${d.round}: ${d.top.length ? d.top.slice(0, 3).join(" · ") : "nothing"}`;
+  if (name === "grade") return `kept ${d.kept}/${d.of} passages · ${d.sufficient ? "sufficient" : "insufficient: " + d.missing}`;
+  if (name === "trend_stats") return `${d.papers} papers · rising: ${(d.rising || []).slice(0, 4).map((r) => r.phrase).join(", ")}`;
+  if (name === "verify") return d.supported ? "all claims supported" : `unsupported: ${d.unsupported_claims.join("; ")}`;
+  if (name === "generate") return `${d.chars} chars`;
+  return JSON.stringify(d).slice(0, 160);
+}
+
+function renderAnswer(text) {
+  return esc(text)
+    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+    .replace(/\[(\d+(?:,\s*\d+)*)\]/g, (_, g) => g.split(/,\s*/).map((n) => `<a class="cite" href="#src-${n}">${n}</a>`).join(""));
+}
+
+async function ask() {
+  const question = $("q").value.trim();
+  if (!question) return;
+  $("ask-btn").disabled = true;
+  $("steps").innerHTML = ""; $("steps").classList.remove("muted");
+  $("answer").textContent = ""; $("answer").classList.remove("muted");
+  $("sources").innerHTML = ""; $("verdict").innerHTML = "";
+  let text = "";
+  try {
+    const resp = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" },
+                                           body: JSON.stringify({ question }) });
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split("\n\n");
+      buf = parts.pop();
+      for (const p of parts) {
+        if (!p.startsWith("data: ")) continue;
+        const ev = JSON.parse(p.slice(6));
+        if (ev.type === "step") {
+          $("steps").insertAdjacentHTML("beforeend",
+            `<div class="step"><b>${esc(ev.name)}</b><span class="ms">${(ev.ms / 1000).toFixed(1)}s</span><div>${esc(stepSummary(ev.name, ev.detail))}</div></div>`);
+        } else if (ev.type === "token") {
+          text += ev.text; $("answer").innerHTML = renderAnswer(text);
+        } else if (ev.type === "final") {
+          $("answer").innerHTML = renderAnswer(ev.answer);
+          $("sources").innerHTML = ev.sources.map((s) => `
+            <div class="src ${s.cited ? "" : "uncited"}" id="src-${s.n}">
+              <span class="cite">${s.n}</span> <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>
+              <div class="meta">${esc(s.section)} · ${esc(s.published)}${(s.found_by || []).map((f) => `<span class="badge">${esc(f)}</span>`).join("")}${s.cited ? "" : '<span class="badge">not cited</span>'}</div>
+            </div>`).join("");
+          if (ev.note) $("verdict").innerHTML = `<div class="verdict warn">ⓘ ${esc(ev.note)}</div>`;
+          const v = ev.verification;
+          if (v) {
+            const ok = v.supported && !v.invalid_citations.length;
+            $("verdict").innerHTML = `<div class="verdict ${ok ? "ok" : "warn"}">${ok ? "✓ Verifier: every claim is supported by the cited passages"
+              : "⚠ Verifier flagged: " + esc([...v.unsupported_claims, ...v.invalid_citations.map((n) => "invalid citation [" + n + "]")].join("; "))}</div>`;
+          }
+          $("steps").insertAdjacentHTML("beforeend", `<div class="step"><b>done</b><span class="ms">${(ev.total_ms / 1000).toFixed(1)}s</span><div>trace ${esc(ev.trace_id)}</div></div>`);
+        } else if (ev.type === "error") {
+          $("answer").textContent = "Error: " + ev.message;
+        }
+      }
+    }
+  } catch (e) {
+    $("answer").textContent = "Error: " + e.message;
+  } finally {
+    $("ask-btn").disabled = false;
+  }
+}
+$("ask-form").onsubmit = (e) => { e.preventDefault(); ask(); };
+
+function table(id, rows) {
+  $(id).innerHTML = "<tr><th>phrase</th><th class='num'>early</th><th class='num'>recent</th></tr>" +
+    rows.map((r) => `<tr><td>${esc(r.phrase)}</td><td class="num">${r.early}</td><td class="num">${r.recent}</td></tr>`).join("");
+}
+
+async function trends() {
+  const params = new URLSearchParams({ weeks: $("weeks").value });
+  if ($("topic").value.trim()) params.set("topic", $("topic").value.trim());
+  $("bars").innerHTML = "<span class='muted'>computing…</span>";
+  const r = await (await fetch("/api/trends?" + params)).json();
+  if (r.error) { $("bars").innerHTML = `<span class="muted">${esc(r.error)}</span>`; return; }
+  const entries = Object.entries(r.weekly_counts);
+  const max = Math.max(...entries.map(([, v]) => v));
+  $("bars").innerHTML = entries.map(([, v]) => `<div style="height:${(v / max) * 100}%"><span>${v}</span></div>`).join("");
+  $("bar-labels").innerHTML = entries.map(([k]) => `<div>${esc(k.slice(5))}</div>`).join("");
+  table("t-rising", r.rising); table("t-fading", r.fading); table("t-popular", r.popular);
+}
+$("trend-form").onsubmit = (e) => { e.preventDefault(); trends(); };
+</script>
+</body>
+</html>
