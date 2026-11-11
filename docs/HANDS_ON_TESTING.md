@@ -151,7 +151,7 @@ The `rerank` column shows the cross-encoder's score.
 ### 3.4 Routing: three kinds of question
 
 ```bash
-uv run radar ask "What does RAG stand for?"
+uv run radar ask "Hello!"
 ```
 ```bash
 uv run radar ask "What's trending in RAG research over the last two months?"
@@ -161,8 +161,45 @@ uv run radar ask "How do recent papers evaluate whether RAG answers are faithful
 ```
 
 Look at the first line (`▸ plan`): the routes should be `direct`, `trends` and `search`.
+For "Hello!" you'll also see `▸ route_check … "top_rerank_score": -9.55, "route": "direct"`:
+code double-checked the planner before letting it answer from memory (see 3.4b).
 The `direct` answer is labelled *"General knowledge: no papers were consulted"*.
 Trends shows phrase counts (`early → recent`) that came from statistics, not the LLM.
+
+### 3.4b The bug this lab caught: an acronym answered from memory
+
+The first version let the planner send "a definition of a basic term" to `direct`. Running
+`uv run radar walkthrough "EAEV"` showed this:
+
+- Stages 3–6: BM25 found the one chunk containing "eaev" (IDF 7.45, the rarest possible word),
+  and the reranker put *Evidence-Aligned Entity Verification* at #1 with **+3.13**, while
+  everything else scored below **−8.6**.
+- Stage 7: the planner still chose `direct`, and the model invented *"EAEV stands for
+  Empirical Analysis of Economic Value"*. A confident hallucination, with the right paper
+  sitting at #1.
+
+An 8B model can't know what it doesn't know, so the fix has two layers:
+
+1. **Prompt:** `direct` is now only for greetings, thanks and questions about the assistant;
+   never for acronyms, names or terms.
+2. **Code guardrail (the important one):** if the planner still says `direct`, the agent runs one
+   search (under 1 s) and checks the top rerank score. Above `0`
+   (`settings.direct_route_max_rerank`), the papers cover the question, so the route becomes
+   `search`. Real topics scored +3 or more and small talk −7 or less, so 0 sits in a wide gap.
+
+Try it:
+
+```bash
+uv run radar walkthrough "EAEV" --no-pause
+```
+```bash
+uv run pytest tests/test_route_guardrail.py -v
+```
+
+The walkthrough now gives a cited answer from the EAEV paper. The tests force the planner to say
+`direct` with a fake LLM and check both sides: score +3.13 → searched, score −9.55 → answered
+directly. Tests with a fake model check the **code's** decision, not the model's mood, so they
+never flake.
 
 ### 3.5 Does it admit what it doesn't know?
 

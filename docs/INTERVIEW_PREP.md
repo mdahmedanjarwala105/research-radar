@@ -76,7 +76,9 @@ Layers: (1) answer only from passages, with inline citations; (2) evidence gradi
 irrelevant passages; (3) abstain when nothing relevant is found; (4) a verifier pass checks claims
 against passages; (5) programmatic checks for invalid citation numbers and citation coverage;
 (6) I don't trust the verifier's boolean alone: the code marks an answer unsupported if any claim
-is flagged. And for trends, numbers come from statistics, not the LLM.
+is flagged; (7) the planner can't answer from memory if the papers cover the question: code runs a
+quick search and overrides the "direct" route when the reranker finds a real match. And for
+trends, numbers come from statistics, not the LLM.
 
 **Q: Why build the agent loop yourself instead of using LangChain or LangGraph?**
 The loop is about 200 lines and fully transparent. I can trace, test and explain every step.
@@ -103,6 +105,16 @@ When the evidence was graded "insufficient", the 8B model ignored the system pro
 (small models weight recent instructions most), tell it explicitly what's missing so it can say
 so, and cap the output length. Answers then dropped to ~150 words with 100% citation coverage.
 The fix came from reading the traces, which is why I log every step.
+
+**Q: Tell me about a time your system hallucinated.**
+I asked it "EAEV", an acronym from one paper in the index. BM25 found the only chunk containing
+it and the reranker put that paper first with +3.13, while everything else scored below −8.6. But
+the planner had routed the question to "answer from memory", and the model invented "Empirical
+Analysis of Economic Value". The retrieval was right; the router skipped it. I fixed it in two
+layers: a stricter route definition, and a code guardrail. Before answering from memory, run one
+sub-second search; if the top rerank score is above 0, switch to search. Small talk scores around
+−7 to −10 and real topics +3 or more, so the threshold sits in a wide gap. I added unit tests with
+a fake LLM that forces the bad route, so the guardrail is tested without depending on the model.
 
 **Q: How would you scale this to millions of documents and many users?**
 Qdrant server or cluster instead of embedded mode (one config change); ingestion as a queue-based

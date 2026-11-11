@@ -221,6 +221,9 @@ the LLM makes small decisions between deterministic steps:
    (`search`), a "what's trending" question (`trends`), or a general one
    (`direct`)? It also rewrites the question into better search queries and
    detects time limits ("this month" → 30 days → a date filter in Qdrant).
+   **Route check:** if the planner says `direct` (answer from memory), code runs one quick
+   search first. If the reranker scores any passage above 0, the papers know about this,
+   so the route is switched to `search`. The model's decision is checked by a measurement.
 2. **Grade evidence** (Corrective RAG / CRAG idea): the LLM marks which
    passages are actually relevant and whether they're *sufficient*.
 3. **Corrective retry**: if insufficient, the LLM writes a follow-up query
@@ -366,6 +369,7 @@ These happened during development. Each one is a ready-made interview story.
 | Verifier said `supported: true` *and* listed an unsupported claim | LLM self-contradiction | Code computes "supported" from the claim list | Never trust a model's summary boolean; derive it |
 | Trend stats used only 48 of 320 papers | Topic filter reused search, capped at ~60 results | Rank all abstracts, keep those within 0.10 of the best match | Cosine scores are compressed and topic-dependent; use relative cutoffs |
 | Trends full of "github com", "consistently outperforms" | Academic boilerplate | Domain-specific stop-words | Statistics are only as good as your features |
+| "EAEV" got an invented meaning ("Empirical Analysis of Economic Value") while the right paper was ranked #1 | Planner routed the acronym to `direct` (answer from memory); a small model can't tell it doesn't know a term | Stricter route definition + a code check: if the top rerank score is above 0, search instead | The router is a single point of failure; check it with a retrieval-confidence signal it can't override |
 
 The general lesson: **log every step (traces), test with real questions, and fix
 causes in code rather than hoping a prompt tweak holds.**

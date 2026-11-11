@@ -139,6 +139,7 @@ function stepSummary(name, d) {
   if (name === "trend_stats") return `${d.papers} papers · rising: ${(d.rising || []).slice(0, 4).map((r) => r.phrase).join(", ")}`;
   if (name === "verify") return d.supported ? "all claims supported" : `unsupported: ${d.unsupported_claims.join("; ")}`;
   if (name === "generate") return `${d.chars} chars`;
+  if (name === "route_check") return `planner said direct · top rerank ${d.top_rerank_score} → ${d.route === "search" ? "papers match, searching instead" : "answering directly"}`;
   return JSON.stringify(d).slice(0, 160);
 }
 

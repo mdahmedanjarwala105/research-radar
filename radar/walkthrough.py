@@ -67,6 +67,9 @@ STEP_NOTES = {
                  "radar/retrieval.py → Retriever.search()"),
     "grade": ("The LLM judged which passages actually help, and whether they are enough.",
               "radar/agent.py → Grade, the corrective loop in run()"),
+    "route_check": ("The planner chose 'direct' (answer from memory), so code ran one search to double-check: "
+                    "a rerank score above 0 means the papers DO cover this, and the route is switched to search.",
+                    "radar/agent.py → run(), settings.direct_route_max_rerank"),
     "trend_stats": ("Trend numbers computed by statistics, not by the LLM.", "radar/trends.py → trend_report()"),
     "generate": ("The answer was written using only the kept passages.", "radar/agent.py → _answer()"),
     "verify": ("A second LLM call checked each claim; code checked the \\[n] numbers.",
@@ -229,6 +232,7 @@ class Walkthrough:
         )
         agent = ResearchAgent(self.store, self.r, llm=SpyLLM(self.c))
         streaming = False
+        route = None
         for ev in agent.run(self.q):
             if ev["type"] == "token":
                 if not streaming:
@@ -239,10 +243,20 @@ class Walkthrough:
                 if streaming:
                     self.c.print("\n")
                     streaming = False
+                if ev["name"] == "plan":
+                    route = ev["detail"]["route"]
+                elif ev["name"] == "route_check":
+                    route = ev["detail"]["route"]
                 note, code = STEP_NOTES.get(ev["name"], ("", ""))
+                if ev["name"] == "generate" and route == "direct":
+                    note = "The answer came from the model's own memory: no passages were used."
+                elif ev["name"] == "generate" and route == "trends":
+                    note = "The brief was written from the trend statistics and example abstracts."
                 self.c.print(f"[bold cyan]✔ {ev['name']}[/] [dim]{ev['ms']} ms[/] · {note} [dim]({code})[/]")
             elif ev["type"] == "final":
                 self.c.print()
+                if ev.get("note"):
+                    self.c.print(f"[yellow]ⓘ {ev['note']}[/]")
                 for s in ev["sources"]:
                     mark = "[green]✓ cited[/]" if s.get("cited") else "[dim]· unused[/]"
                     self.c.print(f"  [{s['n']}] {mark} {s['title'][:60]} [dim]found by {s['found_by']}[/]")

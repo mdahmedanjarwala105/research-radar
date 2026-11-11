@@ -8,7 +8,7 @@ This agent is an explicit state machine (the same idea frameworks like
 LangGraph formalise), where the LLM makes small, schema-constrained
 decisions between deterministic steps:
 
-    PLAN ──► route = "direct"  ──────────────────────────────► ANSWER
+    PLAN ──► route = "direct"  ──► ROUTE CHECK (papers match? → search) ──► ANSWER
       │      route = "trends"  ──► TREND STATS ──────────────► ANSWER
       │      route = "search"  ──► RETRIEVE ──► GRADE ──┬───► ANSWER ──► VERIFY
       │                               ▲                 │
@@ -75,7 +75,10 @@ Routes:
   is changing over time. Example: "What's trending in RAG?" / "Which topics are growing lately?"
 - "search": the user asks about methods, findings, results, papers, comparisons or techniques.
   This is the default. Example: "How do papers reduce hallucination?" / "What did paper X find?"
-- "direct": ONLY greetings or a pure definition of a basic term. Example: "What does RAG stand for?"
+- "direct": ONLY greetings, thanks, or questions about you, the assistant.
+  Example: "Hello!" / "What can you do?"
+  Never use "direct" for acronyms, names, methods or terms, even short ones: you may not know
+  them, and the papers might. Use "search" instead.
 
 Rules:
 - Never put years or dates inside search queries; the database only holds recent papers anyway.
@@ -170,6 +173,26 @@ class ResearchAgent:
             s.update(plan.model_dump())
         yield {"type": "step", "name": "plan", "detail": plan.model_dump(), "ms": s["ms"]}
 
+        # Guardrail: "direct" means answering from the model's memory, which is exactly
+        # where hallucinations come from. The planner can't know what it doesn't know
+        # (it once "defined" the acronym EAEV with an invented meaning while the right
+        # paper sat in the index). So before trusting it, run one cheap search: if the
+        # cross-encoder finds a passage that genuinely matches, the papers win.
+        if plan.route == "direct":
+            with trace.span("route_check") as s:
+                top = self.retriever.search(question, k=1)
+                score = top[0].rerank_score if top else None
+                override = score is not None and score > settings.direct_route_max_rerank
+                s.update(top_rerank_score=score, override=override)
+            yield {
+                "type": "step", "name": "route_check", "ms": s["ms"],
+                "detail": {"planner_route": "direct", "top_rerank_score": None if score is None else round(score, 2),
+                           "top_paper": top[0].title if top else None,
+                           "route": "search" if override else "direct"},
+            }
+            if override:
+                plan.route = "search"
+
         if plan.route == "direct":
             yield from self._answer(trace, DIRECT_SYS, f"Question: {question}", hits=[], verify=False,
                                     note="General knowledge: no papers were consulted for this answer.")
@@ -179,7 +202,7 @@ class ResearchAgent:
             return
 
         # ---- 2. RETRIEVE ⇄ GRADE (corrective loop) ----
-        queries = [question, *plan.search_queries]
+        queries = list(dict.fromkeys([question, *plan.search_queries]))  # dedupe, keep order
         evidence: dict[str, Hit] = {}
         for round_no in range(1, settings.max_retrieval_rounds + 1):
             with trace.span("retrieve", round=round_no, queries=queries) as s:

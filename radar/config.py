@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # --- Agent ---
     max_retrieval_rounds: int = 2  # corrective retries when context is insufficient
     verify_answers: bool = True
+    # Guardrail on the "direct" route: if the reranker scores any passage above this,
+    # the papers know something about the question, so search them instead of
+    # answering from memory. Small talk scores around -7 to -10; real topics +3 or more.
+    direct_route_max_rerank: float = 0.0
 
     @property
     def qdrant_path(self) -> Path:

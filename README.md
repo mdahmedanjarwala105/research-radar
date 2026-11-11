@@ -45,7 +45,7 @@ End to end: **88% of answers fully supported by their sources, 100% cited the co
                          │                     ▲                                               │
                          │                     └──────── rewrite query (corrective loop) ◄─────┘
                          ├─ trends ─► time-window phrase statistics ─► LLM brief
-                         └─ direct ─► short answer
+                         └─ direct ─► route check (do the papers match? then search) ─► short answer
                                          served via CLI · streaming web UI (SSE) · REST API · MCP
 ```
 
