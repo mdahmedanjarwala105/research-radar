@@ -115,5 +115,6 @@ uv run radar eval run --answers 8   # retrieval ablation + end-to-end answer sco
 ## Learn how it works
 
 - [docs/LEARNING_GUIDE.md](docs/LEARNING_GUIDE.md): every concept explained from scratch, mapped to the code
+- [docs/HANDS_ON_TESTING.md](docs/HANDS_ON_TESTING.md): a testing lab, from unit tests to experiments that isolate each component; start with `uv run radar walkthrough "<question>"`
 - [docs/INTERVIEW_PREP.md](docs/INTERVIEW_PREP.md): pitch, design decisions, likely questions
 - [docs/EVAL_RESULTS.md](docs/EVAL_RESULTS.md): measured results

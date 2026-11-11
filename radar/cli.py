@@ -108,6 +108,14 @@ def ask(question: str, verify: bool = typer.Option(True, help="Run the claim-ver
 
 
 @app.command()
+def walkthrough(question: str, pause: bool = typer.Option(True, help="Wait for Enter between stages")):
+    """Learning mode: run one question stage by stage, showing the real numbers and the code behind each."""
+    from radar.walkthrough import Walkthrough
+
+    Walkthrough(question, pause=pause, console=console).run()
+
+
+@app.command()
 def trends(topic: str = typer.Option(None), weeks: int = 8):
     """Statistical trend radar (no LLM): rising and fading research phrases."""
     from radar.retrieval import Retriever
